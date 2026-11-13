@@ -1,81 +1,103 @@
 
+
 const bookForm = document.getElementById("bookForm");
 const bookList = document.getElementById("bookList");
 
-let books = [];
+let books = JSON.parse(localStorage.getItem("libraryBooks")) || [];
+
+function saveBooks() {
+    localStorage.setItem("libraryBooks", JSON.stringify(books));
+}
+
+function displayBooks() {
+    bookList.innerHTML = "";
+
+    books.forEach(function(book, index) {
+        const row = document.createElement("tr");
+
+        const title = document.createElement("td");
+        title.textContent = book.title;
+
+        const author = document.createElement("td");
+        author.textContent = book.author;
+
+        const id = document.createElement("td");
+        id.textContent = book.id;
+
+        const status = document.createElement("td");
+        status.textContent = book.status;
+
+        const actions = document.createElement("td");
+
+        const issueButton = document.createElement("button");
+        issueButton.textContent =
+            book.status === "Available" ? "Issue" : "Return";
+
+        issueButton.addEventListener("click", function() {
+            books[index].status =
+                book.status === "Available" ? "Issued" : "Available";
+
+            saveBooks();
+            displayBooks();
+            updateDashboard();
+        });
+
+        const deleteButton = document.createElement("button");
+        deleteButton.textContent = "Delete";
+
+        deleteButton.addEventListener("click", function() {
+            if (confirm("Delete this book?")) {
+                books.splice(index, 1);
+                saveBooks();
+                displayBooks();
+                updateDashboard();
+            }
+        });
+
+        actions.appendChild(issueButton);
+        actions.appendChild(deleteButton);
+
+        row.append(title, author, id, status, actions);
+        bookList.appendChild(row);
+    });
+}
+
+function updateDashboard() {
+    document.getElementById("totalBooks").textContent = books.length;
+
+    document.getElementById("issuedBooks").textContent =
+        books.filter(book => book.status === "Issued").length;
+
+    document.getElementById("availableBooks").textContent =
+        books.filter(book => book.status === "Available").length;
+}
 
 bookForm.addEventListener("submit", function(event) {
     event.preventDefault();
 
     const title = document.getElementById("bookTitle").value.trim();
     const author = document.getElementById("author").value.trim();
-    const bookId = document.getElementById("bookId").value.trim();
+    const id = document.getElementById("bookId").value.trim();
 
-    if (!title || !author || !bookId) {
-        alert("Please fill in all fields.");
+    if (books.some(book => book.id.toLowerCase() === id.toLowerCase())) {
+        alert("This Book ID already exists!");
         return;
     }
 
-    const duplicate = books.some(book => book.id === bookId);
-
-    if (duplicate) {
-        alert("This Book ID already exists.");
-        return;
-    }
-
-    const book = {
+    books.push({
         title: title,
         author: author,
-        id: bookId,
+        id: id,
         status: "Available"
-    };
+    });
 
-    books.push(book);
-
+    saveBooks();
     displayBooks();
     updateDashboard();
 
     bookForm.reset();
-
     alert("Book added successfully!");
 });
 
-function displayBooks() {
-    bookList.innerHTML = "";
-
-    books.forEach(function(book) {
-        const row = document.createElement("tr");
-
-        row.innerHTML = `
-            <td>${escapeHTML(book.title)}</td>
-            <td>${escapeHTML(book.author)}</td>
-            <td>${escapeHTML(book.id)}</td>
-            <td>${book.status}</td>
-        `;
-
-        bookList.appendChild(row);
-    });
-}
-
-function updateDashboard() {
-    const total = books.length;
-    const issued = books.filter(book => book.status === "Issued").length;
-    const available = total - issued;
-
-    document.getElementById("totalBooks").textContent = total;
-    document.getElementById("issuedBooks").textContent = issued;
-    document.getElementById("availableBooks").textContent = available;
-}
-
-function escapeHTML(value) {
-    return value.replace(/[&<>"']/g, function(character) {
-        const entities = {
-            "&": "&amp;",
-            "<": "&lt;",
-            ">": "&gt;",
-            '"': "&quot;",
-            "'": "&#39;"
-        };
-        return entities[character];
-    });
-}
+displayBooks();
+updateDashboard();
